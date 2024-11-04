@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import "./App.css";
 import Header from "./Header/Header";
 import Home from "./Home/Home";
@@ -9,28 +9,36 @@ import { auth } from "./firebase";
 import { useStateValue } from "./StateProvider";
 
 function App() {
-  const [{}, dispatch] = useStateValue();
+  const [{ user }, dispatch] = useStateValue();
+  const [localUser, setLocalUser] = useState(null); // Local state to track user
 
   useEffect(() => {
     // will only run once when the app component loads...
 
-    auth.onAuthStateChanged((authUser) => {
+    const unsubscribe = auth.onAuthStateChanged((authUser) => {
+      // Check if the user has changed
       if (authUser) {
-        // the user just logged in / the user was logged in
-
-        dispatch({
-          type: "SET_USER",
-          user: authUser,
-        });
+        // User is logged in
+        setLocalUser(authUser); // Update local state
       } else {
-        // the user is logged out
-        dispatch({
-          type: "SET_USER",
-          user: null,
-        });
+        // User is logged out
+        setLocalUser(null); // Update local state
       }
     });
-  });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []); // Dependency array empty to run only on mount
+
+  useEffect(() => {
+    // Dispatch only if localUser has changed
+    if (localUser !== user) {
+      dispatch({
+        type: "SET_USER",
+        user: localUser,
+      });
+    }
+  }, [localUser, user, dispatch]); // Only run when localUser changes
 
   return (
     <Router>
